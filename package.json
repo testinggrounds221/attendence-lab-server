@@ -1,0 +1,39 @@
+{
+	"name": "lab-attendance-monitoring",
+	"version": "1.0.0",
+	"description": "Attendence Monitoring System for TCE labs",
+	"main": "index.js",
+	"scripts": {
+		"start": "node src/index.js",
+		"dev": "env-cmd -f config/dev.env nodemon src/index.js",
+		"test": "env-cmd -f config/test.env jest --watch --runInBand"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/testinggrounds221/attendence-lab-server.git"
+	},
+	"keywords": [
+		"attendence"
+	],
+	"author": "testinggrounds221",
+	"license": "ISC",
+	"bugs": {
+		"url": "https://github.com/testinggrounds221/attendence-lab-server/issues"
+	},
+	"homepage": "https://github.com/testinggrounds221/attendence-lab-server#readme",
+	"dependencies": {
+		"@sendgrid/mail": "^7.2.2",
+		"bcryptjs": "^2.4.3",
+		"env-cmd": "^10.1.0",
+		"express": "^4.17.1",
+		"jest": "^27.4.4",
+		"jsonwebtoken": "^8.5.1",
+		"mongodb": "^3.5.9",
+		"mongoose": "^5.9.25",
+		"multer": "^1.4.2",
+		"nodemon": "^2.0.15",
+		"sharp": "^0.25.4",
+		"supertest": "^6.1.6",
+		"validator": "^13.1.1"
+	}
+}
