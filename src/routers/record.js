@@ -2,15 +2,61 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const Record = require("../models/record");
+const User = require("../models/record");
+
 const { ObjectID, ObjectId } = require("mongodb");
 
 router.post("/records", auth, async (req, res) => {
-  const record = new Record({ ...req.body, owner: req.user._id });
   try {
-    await record.save();
-    res.status(201).send(record);
+    if (req.user.currentLab == -1) {
+      const newRecord = new Record({ ...req.body, entryUser: req.user._id });
+      newRecord.recordStatus = 0;
+      req.user.currentLab = newRecord.labID;
+      newRecord.entryTime = Date();
+      console.log(
+        `User ${req.user.userName} ENTRY INTO LAB ${req.user.currentLab}`
+      );
+      await req.user.save();
+      await newRecord.save();
+      res.status(201).send(newRecord);
+      return;
+    } else {
+      if (req.user.currentLab != req.body.labID) {
+        res
+          .status(409)
+          .send(
+            `Conflict Error ${req.user.userName} exit from ${req.user.currentLab} first`
+          );
+        return;
+      } else {
+        const existingRecord = await Record.findOne({
+          entryUser: req.user._id,
+          recordStatus: 0,
+        });
+
+        if (!existingRecord) {
+          res
+            .status(404)
+            .send(
+              `User ${req.user.userName} ENTRY RECORD NOT FOUND FOR LAB ${req.user.currentLab}`
+            );
+          return;
+        }
+
+        existingRecord.recordStatus = 1;
+        existingRecord.exitTime = Date();
+        console.log(
+          `User ${req.user.userName} EXIT FROM LAB ${req.user.currentLab}`
+        );
+
+        req.user.currentLab = -1;
+        await req.user.save();
+        await existingRecord.save();
+        res.status(201).send(existingRecord);
+      }
+    }
   } catch (e) {
-    res.status(400).send();
+    res.status(400).send(e.message);
   }
 });
 
@@ -21,7 +67,7 @@ router.get("/records/:id", auth, async (req, res) => {
   }
 
   try {
-    const record = await Record.findOne({ _id, owner: req.user._id });
+    const record = await Record.findOne({ _id, entryUser: req.user._id });
     if (!record) {
       return res.status(404).send();
     }
@@ -59,6 +105,25 @@ router.get("/records", auth, async (req, res) => {
     res.send(req.user.records);
   } catch (e) {
     res.status(500).send();
+  }
+});
+
+router.patch("/users/me", auth, async (req, res) => {
+  const updates = Object.keys(req.body);
+
+  const allowedUpdates = ["name", "email", "password", "age"];
+  const isValidOperation = updates.every((update) =>
+    allowedUpdates.includes(update)
+  );
+  if (!isValidOperation) {
+    return res.status(400).send({ Error: "Invalid Field" });
+  }
+  try {
+    updates.forEach((update) => (req.user[update] = req.body[update]));
+    await req.user.save();
+    res.send(req.user);
+  } catch (e) {
+    res.status(400).send();
   }
 });
 

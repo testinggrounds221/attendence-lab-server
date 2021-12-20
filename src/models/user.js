@@ -2,7 +2,7 @@ const mongoose = require("mongoose");
 const validator = require("validator");
 const bcrypt = require("bcryptjs");
 const jwt = require("jsonwebtoken");
-
+const Record = require("../models/record");
 const userSchema = mongoose.Schema(
   {
     // Username .
@@ -42,6 +42,10 @@ const userSchema = mongoose.Schema(
       minlength: 6,
       trim: true,
     },
+    currentLab: {
+      type: Number,
+      default: -1,
+    },
     tokens: [
       {
         token: {
@@ -56,6 +60,12 @@ const userSchema = mongoose.Schema(
     collection: "users",
   }
 );
+
+userSchema.virtual("records", {
+  ref: "Record",
+  localField: "_id",
+  foreignField: "entryUser",
+});
 
 userSchema.methods.toJSON = function () {
   const user = this;
