@@ -1,7 +1,7 @@
 const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
-const Record = require("../models/record");
+const { Record, Archive } = require("../models/record");
 const User = require("../models/record");
 
 const { ObjectID, ObjectId } = require("mongodb");
@@ -124,6 +124,25 @@ router.patch("/users/me", auth, async (req, res) => {
     res.send(req.user);
   } catch (e) {
     res.status(400).send();
+  }
+});
+
+router.post("/migrate/:lid/:sesid", auth, async (req, res) => {
+  const lid = req.params.lid;
+  const sid = req.params.sesid;
+  let bulkInsert = Archive.collection.initializeUnorderedBulkOp();
+  let bulkRemove = Record.collection.initializeUnorderedBulkOp();
+  try {
+    const records = await Record.find({ labID: lid, session: sid });
+    records.forEach(function (doc) {
+      bulkInsert.insert(doc);
+      bulkRemove.find({ _id: doc._id }).deleteOne();
+    });
+    bulkInsert.execute();
+    bulkRemove.execute();
+    res.status(201).send("Migrated"); //
+  } catch (e) {
+    res.status(500).send(e);
   }
 });
 
