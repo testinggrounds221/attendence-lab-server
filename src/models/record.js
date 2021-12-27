@@ -21,7 +21,7 @@ const commonFields = {
     default: null,
   },
   session: {
-    type: Number,
+    type: String,
     required: true,
     default: 0,
   },

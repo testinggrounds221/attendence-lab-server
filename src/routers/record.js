@@ -2,7 +2,8 @@ const express = require("express");
 const router = express.Router();
 const auth = require("../middleware/auth");
 const { Record, Archive } = require("../models/record");
-const User = require("../models/record");
+
+const User = require("../models/user");
 
 const { ObjectID, ObjectId } = require("mongodb");
 
@@ -77,6 +78,28 @@ router.get("/records/:id", auth, async (req, res) => {
   }
 });
 
+router.get("/records/getAttendence/:lid/:sesid", auth, async (req, res) => {
+  const lid = req.params.lid;
+  const sid = req.params.sesid;
+  let bulkSearch = Archive.collection.initializeUnorderedBulkOp();
+
+  try {
+    const archives = await Archive.find({ labID: lid, session: sid });
+    if (!archives.length) {
+      res.status(201).send("No data to Send");
+      return;
+    }
+
+    archives.forEach(function (doc) {
+      console.log(doc.entryTime);
+    });
+
+    res.status(201).send("Migrated"); // SEND DATA HERE
+  } catch (e) {
+    res.status(500).send(e);
+  }
+});
+
 // GET /records?completed=true
 // GET /records?limit=10&skip=10
 // GET /records?sortBy=createdAt:desc
@@ -127,22 +150,41 @@ router.patch("/users/me", auth, async (req, res) => {
   }
 });
 
-router.post("/migrate/:lid/:sesid", auth, async (req, res) => {
+router.post("/records/migrate/:lid/:sesid", auth, async (req, res) => {
   const lid = req.params.lid;
   const sid = req.params.sesid;
   let bulkInsert = Archive.collection.initializeUnorderedBulkOp();
   let bulkRemove = Record.collection.initializeUnorderedBulkOp();
+  //   let bulkModifyCurrentLab = User.collection.initializeUnorderedBulkOp();
+
   try {
     const records = await Record.find({ labID: lid, session: sid });
+    if (!records.length) {
+      res.status(404).send("No data to Migrate");
+      return;
+    }
     records.forEach(function (doc) {
+      if (!doc.exitTime) {
+        doc.exitTime = Date();
+      }
       bulkInsert.insert(doc);
       bulkRemove.find({ _id: doc._id }).deleteOne();
     });
+    // bulkModifyCurrentLab
+    //   .find({ currentLab: lid })
+    //   .update({ $set: { currentLab: -1 } });
+
+    const updateDetails = await User.updateMany(
+      { currentLab: lid },
+      { currentLab: -1 }
+    );
+    console.log(updateDetails);
     bulkInsert.execute();
     bulkRemove.execute();
-    res.status(201).send("Migrated"); //
+
+    res.status(201).send("Migrated Records"); //
   } catch (e) {
-    res.status(500).send(e);
+    res.status(500).send(e.message);
   }
 });
 
